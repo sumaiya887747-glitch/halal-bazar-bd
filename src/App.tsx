@@ -51,7 +51,7 @@ import {
 } from './utils/notifications';
 import { db, auth } from './lib/firebase';
 import { signInAnonymously } from 'firebase/auth';
-import { doc, setDoc, getDoc, onSnapshot, collection, query, orderBy, getDocs } from 'firebase/firestore';
+import { doc, setDoc, getDoc, onSnapshot, collection, query, orderBy, getDocs, deleteDoc } from 'firebase/firestore';
 import { handleFirestoreError, OperationType, sanitizeForFirestore, splitSettingsForFirestore } from './utils/firebaseUtils';
 
 const CLIENT_ID = Math.random().toString(36).substring(2, 9);
@@ -250,6 +250,8 @@ export default function App() {
         setTestimonials(data.testimonials);
       }
 
+      // Products are now managed exclusively via Firestore, ignoring API sync data
+      /*
       if (Array.isArray(data.products) && data.products.length > 0) {
         setProducts((prev) => {
           return data.products.map((serverItem: ProductItem) => {
@@ -261,6 +263,7 @@ export default function App() {
           });
         });
       }
+      */
 
       if (data.settings && typeof data.settings === 'object' && Object.keys(data.settings).length > 0) {
         setStoreSettings((prev) => ({ ...prev, ...data.settings }));
@@ -302,6 +305,7 @@ export default function App() {
         const productsCol = collection(db, 'products');
         onSnapshot(productsCol, (snapshot) => {
           const firestoreProducts = snapshot.docs.map(doc => doc.data() as ProductItem);
+          console.log('App: Products from Firestore:', firestoreProducts);
           setProducts(firestoreProducts);
         });
 
@@ -350,6 +354,7 @@ export default function App() {
   const [products, setProducts] = useState<ProductItem[]>([]);
 
   useEffect(() => {
+    console.log('App: products state initialized or updated', products);
     localStorage.setItem('hb_live_products', JSON.stringify(products));
     try {
       const ch = new BroadcastChannel('halal_bazar_realtime_sync');
@@ -1365,29 +1370,29 @@ export default function App() {
       ch.close();
     } catch (e) {}
 
-    // 1. Sync to Express Server (SSE broadcast to all local listeners)
+    // 1. Sync to Express Server
     fetch('/api/products/update', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ products: newProducts }),
     }).catch(() => {});
 
-    // 2. Sync to Firebase Cloud Firestore for persistent cross-device real-time sync
+    // 2. Sync to Firebase Cloud Firestore
     try {
-      const cleanItems = newProducts.map((p) => {
-        const item: any = { ...p };
-        if (typeof item.image === 'string' && (item.image.startsWith('data:') || item.image.length > 2048)) {
-          item.image = 'https://images.unsplash.com/photo-1596040033229-a9821ebd058d?auto=format&fit=crop&w=800&q=80';
-        }
-        return item;
-      });
-      await setDoc(doc(db, 'products', 'inventory'), {
-        items: sanitizeForFirestore(cleanItems),
-        updatedAt: Date.now(),
-        updatedBy: CLIENT_ID,
-      });
+      // Get all current products from Firestore
+      const productsCol = collection(db, 'products');
+      const snapshot = await getDocs(productsCol);
+      
+      // Delete all existing documents in 'products' collection
+      await Promise.all(snapshot.docs.map(d => deleteDoc(d.ref)));
+
+      // Add new products as individual documents
+      await Promise.all(newProducts.filter(p => !!p.id).map(p => 
+        setDoc(doc(db, 'products', p.id), sanitizeForFirestore(p))
+      ));
     } catch (e) {
       console.warn('Firebase Products Sync Error:', e);
+      handleFirestoreError(e, OperationType.WRITE, 'products');
     }
   };
 
@@ -1403,7 +1408,7 @@ export default function App() {
 
     // Save to Firebase (Permanent Storage)
     try {
-      const cloudPayload = prepareSettingsForFirestore(newSettings);
+      const cloudPayload = splitSettingsForFirestore(newSettings);
       await setDoc(doc(db, 'settings', 'global'), cloudPayload);
     } catch (e) {
       console.error('Firebase Settings Error:', e);

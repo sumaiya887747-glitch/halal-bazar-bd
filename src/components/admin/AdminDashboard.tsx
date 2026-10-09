@@ -510,6 +510,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     setTempSettings(settings);
   }, [settings]);
 
+  useEffect(() => {
+    console.log('AdminDashboard Products:', products);
+  }, [products]);
+
   // Customers aggregation
   const customers = React.useMemo(() => {
     const map = new Map<string, {
