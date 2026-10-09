@@ -56,8 +56,9 @@ export const SpicesSection: React.FC<SpicesSectionProps> = ({
 
   // Filter ONLY spice/food products
   const spiceProducts = products.filter(isSpiceItem);
+  const uniqueSpiceProducts = Array.from(new Map(spiceProducts.map(p => [p.id, p])).values());
 
-  const filteredSpices = spiceProducts.filter((p) => {
+  const filteredSpices = uniqueSpiceProducts.filter((p) => {
     const catKey = activeCategoryFilter.toLowerCase();
     const text = `${p.categoryBn} ${p.categoryEn || ''} ${p.nameBn} ${p.nameEn || ''}`.toLowerCase();
 
@@ -261,7 +262,7 @@ export const SpicesSection: React.FC<SpicesSectionProps> = ({
         ) : (
           /* Spices Grid */
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredSpices.map((product) => {
+            {filteredSpices.map((product, index) => {
               const isAdded = !!addedIds[product.id];
               const weightIdx = selectedWeights[product.id] || 0;
               const currentWeightOption = product.weightOptions?.[weightIdx];
@@ -271,7 +272,7 @@ export const SpicesSection: React.FC<SpicesSectionProps> = ({
 
               return (
                 <div
-                  key={product.id}
+                  key={`${product.id || 'no-id'}-${index}`}
                   className={`group flex flex-col justify-between p-4 sm:p-5 rounded-3xl border transition-all duration-300 relative overflow-hidden card-hover-effect ${
                     product.inStock === false
                       ? 'border-neutral-200/60 bg-neutral-50/80 shadow-2xs opacity-85'
@@ -396,16 +397,16 @@ export const SpicesSection: React.FC<SpicesSectionProps> = ({
                           {isBn ? 'প্যাকেটের সাইজ:' : 'Pack Size:'}
                         </span>
                         <div className="flex flex-wrap gap-1.5">
-                          {product.weightOptions.map((opt, idx) => {
-                            const isSelected = weightIdx === idx;
+                          {product.weightOptions.map((opt) => {
+                            const isSelected = weightIdx === product.weightOptions!.indexOf(opt);
                             return (
                               <button
-                                key={idx}
+                                key={`${product.id}-${opt.label}`}
                                 type="button"
                                 onClick={() =>
                                   setSelectedWeights((prev) => ({
                                     ...prev,
-                                    [product.id]: idx,
+                                    [product.id]: product.weightOptions!.indexOf(opt),
                                   }))
                                 }
                                 className={`px-2.5 py-1 text-[11px] rounded-xl border font-bold transition-all cursor-pointer ${
@@ -447,11 +448,11 @@ export const SpicesSection: React.FC<SpicesSectionProps> = ({
                         </span>
                         <div className="flex items-baseline gap-1.5">
                           <span className="text-xl font-black font-mono tabular-nums tracking-tight" style={{ color: theme.primary }}>
-                            ৳{displayPrice.toLocaleString()}
+                            ৳{typeof displayPrice === 'number' ? displayPrice.toLocaleString() : '0'}
                           </span>
                           {product.originalPrice && displayPrice < product.originalPrice && (
                             <span className="text-xs text-neutral-400 line-through font-mono">
-                              ৳{product.originalPrice.toLocaleString()}
+                              ৳{typeof product.originalPrice === 'number' ? product.originalPrice.toLocaleString() : '0'}
                             </span>
                           )}
                           <EditTrigger 

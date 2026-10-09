@@ -49,6 +49,18 @@
         "phone": { "type": "string" },
         "address": { "type": "string" }
       }
+    },
+    "Product": {
+      "title": "Product",
+      "description": "Store inventory item",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "nameEn": { "type": "string" },
+        "nameBn": { "type": "string" },
+        "price": { "type": "number" }
+      },
+      "required": ["id", "nameEn", "price"]
     }
   },
   "firestore": {
@@ -63,6 +75,10 @@
     "/settings/global": {
       "schema": "StoreSettings",
       "description": "Singleton for store settings"
+    },
+    "/products/{productId}": {
+      "schema": "Product",
+      "description": "Collection of products"
     }
   }
 }

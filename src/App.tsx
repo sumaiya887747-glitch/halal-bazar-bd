@@ -52,77 +52,10 @@ import {
 } from './utils/notifications';
 import { db, auth } from './lib/firebase';
 import { signInAnonymously } from 'firebase/auth';
-import { doc, setDoc, getDoc, onSnapshot, collection, query, orderBy } from 'firebase/firestore';
+import { doc, setDoc, getDoc, onSnapshot, collection, query, orderBy, getDocs } from 'firebase/firestore';
+import { handleFirestoreError, OperationType, sanitizeForFirestore, splitSettingsForFirestore } from './utils/firebaseUtils';
 
 const CLIENT_ID = Math.random().toString(36).substring(2, 9);
-
-/**
- * Sanitizes an object for Firestore by removing 'undefined' values recursively.
- */
-function sanitizeForFirestore(obj: any): any {
-  if (obj === null || typeof obj !== 'object') return obj;
-  if (Array.isArray(obj)) return obj.map(sanitizeForFirestore);
-  
-  const sanitized: any = {};
-  for (const key in obj) {
-    if (obj[key] !== undefined) {
-      sanitized[key] = sanitizeForFirestore(obj[key]);
-    }
-  }
-  return sanitized;
-}
-
-/**
- * Prepares settings for Firestore by removing oversized base64 strings and ensuring
- * the document NEVER exceeds Firestore's 1,048,576 bytes (1MB) limit.
- */
-function prepareSettingsForFirestore(settings: StoreSettings): any {
-  function pruneHeavyStrings(obj: any): any {
-    if (obj === null || obj === undefined) return undefined;
-    if (typeof obj === 'string') {
-      // Base64 images, data URIs or oversized strings must not be saved into Firestore
-      if (obj.startsWith('data:') || obj.length > 1024) {
-        return undefined;
-      }
-      return obj;
-    }
-    if (Array.isArray(obj)) {
-      return obj.map(pruneHeavyStrings).filter((v) => v !== undefined);
-    }
-    if (typeof obj === 'object') {
-      const res: any = {};
-      for (const k in obj) {
-        const val = pruneHeavyStrings(obj[k]);
-        if (val !== undefined) {
-          res[k] = val;
-        }
-      }
-      return res;
-    }
-    return obj;
-  }
-
-  let pruned = pruneHeavyStrings(settings);
-  let sanitized = sanitizeForFirestore(pruned);
-
-  // Guarantee payload size is strictly well under 800KB
-  try {
-    const rawJson = JSON.stringify(sanitized);
-    if (rawJson.length > 700000) {
-      console.warn('Pruning large settings payload for Firestore:', rawJson.length);
-      const safeCompact: any = {};
-      for (const key of Object.keys(sanitized)) {
-        const v = sanitized[key];
-        if (typeof v === 'string' && v.length > 256) continue;
-        if (Array.isArray(v) && v.length > 30) continue;
-        safeCompact[key] = v;
-      }
-      return safeCompact;
-    }
-  } catch (e) {}
-
-  return sanitized;
-}
 
 const VisualQuickEditConsumer: React.FC<{
   onSave: (field: string, newValue: any, productId?: string) => Promise<void> | void;
@@ -362,6 +295,32 @@ export default function App() {
 
     // Initial sync
     syncWithServer();
+    
+    // Setup real-time listeners from Firestore
+    const setupFirebaseListeners = () => {
+      try {
+        // Real-time listener for products
+        const productsCol = collection(db, 'products');
+        onSnapshot(productsCol, (snapshot) => {
+          const firestoreProducts = snapshot.docs.map(doc => doc.data() as ProductItem);
+          setProducts(firestoreProducts);
+        });
+
+        // Real-time listener for settings
+        const parts = ['general', 'appearance', 'homepage', 'payments', 'content'];
+        parts.forEach((part) => {
+          const docRef = doc(db, 'settings', part);
+          onSnapshot(docRef, (docSnap) => {
+            if (docSnap.exists()) {
+              setStoreSettings((prev) => ({ ...prev, ...docSnap.data() }));
+            }
+          });
+        });
+      } catch (e) {
+        console.error('Error setting up Firestore listeners', e);
+      }
+    };
+    setupFirebaseListeners();
 
     const interval = setInterval(syncWithServer, 1000);
     return () => {
@@ -388,31 +347,8 @@ export default function App() {
     };
   }, []);
 
-  // Live Products State with localStorage (starts with DEFAULT_PRODUCTS, synced)
-  const [products, setProducts] = useState<ProductItem[]>(() => {
-    const saved = localStorage.getItem('hb_live_products');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          // Filter out any obsolete spices/groceries items
-          const cleaned = parsed
-            .filter((p: any) => {
-              const txt = `${p.categoryBn || ''} ${p.categoryEn || ''} ${p.nameBn || ''} ${p.nameEn || ''}`.toLowerCase();
-              return !txt.includes('মসলা') && !txt.includes('মশলা') && !txt.includes('হলুদ') && !txt.includes('মরিচ') && !txt.includes('ধনিয়া') && !txt.includes('spice');
-            })
-            .map((p: any) => ({
-              ...p,
-              stockQuantity: p.stockQuantity !== undefined ? p.stockQuantity : (p.inStock === false ? 0 : 12),
-            }));
-          if (cleaned.length > 0) {
-            return cleaned;
-          }
-        }
-      } catch (e) {}
-    }
-    return DEFAULT_PRODUCTS;
-  });
+  // Live Products State with localStorage (starts empty, then synced)
+  const [products, setProducts] = useState<ProductItem[]>([]);
 
   useEffect(() => {
     localStorage.setItem('hb_live_products', JSON.stringify(products));
@@ -421,6 +357,10 @@ export default function App() {
       ch.postMessage({ type: 'SYNC_PRODUCTS', payload: products, sender: CLIENT_ID });
       ch.close();
     } catch (e) {}
+
+    // Persist to Firestore
+    Promise.all(products.filter(p => !!p.id).map(p => setDoc(doc(db, 'products', p.id), sanitizeForFirestore(p))))
+      .catch((e) => handleFirestoreError(e, OperationType.WRITE, 'products'));
   }, [products]);
 
   // Store Settings with localStorage
@@ -473,6 +413,9 @@ export default function App() {
       try {
         const parsed = JSON.parse(saved);
         const merged: StoreSettings = { ...defaultSettings, ...parsed };
+        if (merged.storeName === 'Halal Bazar BD - Pure & Organic Products') {
+          merged.storeName = 'Halal Bazar BD';
+        }
         if (Array.isArray(parsed.navItems)) {
           merged.navItems = parsed.navItems.map((item: any) => {
             if (item.labelBn?.includes('মসলা') || item.labelBn?.includes('মশলা')) {
@@ -508,6 +451,13 @@ export default function App() {
       ch.postMessage({ type: 'SYNC_SETTINGS', payload: storeSettings, sender: CLIENT_ID });
       ch.close();
     } catch (e) {}
+
+    // Persist to Firestore
+    const splitData = splitSettingsForFirestore(storeSettings);
+    Object.entries(splitData).forEach(([key, value]) => {
+      setDoc(doc(db, 'settings', key), value)
+        .catch((e) => handleFirestoreError(e, OperationType.WRITE, `settings/${key}`));
+    });
   }, [storeSettings]);
 
   useEffect(() => {
