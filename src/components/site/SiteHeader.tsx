@@ -4,14 +4,16 @@ import { ColorTheme, Language, ProductItem, WebsiteData } from '../../types/webs
 import { EditTrigger } from '../editor/EditTrigger';
 
 const cleanPhoneForWhatsapp = (phoneStr: string): string => {
-  const cleaned = phoneStr.replace(/\D/g, '');
+  if (!phoneStr) return '8801329571899';
+  const firstPhone = phoneStr.split(/[,/|]/)[0].trim();
+  const cleaned = firstPhone.replace(/\D/g, '');
   if (cleaned.startsWith('0') && cleaned.length === 11) {
     return '88' + cleaned;
   }
   if (cleaned.length === 10 && /^[1-9]/.test(cleaned)) {
     return '880' + cleaned;
   }
-  return cleaned || '8801711889900';
+  return cleaned || '8801329571899';
 };
 
 interface SiteHeaderProps {

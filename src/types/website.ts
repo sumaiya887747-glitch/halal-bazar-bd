@@ -49,7 +49,8 @@ export interface ProductItem {
   discountPercent?: number; // Discount % (যেমন: 15%)
   quantity?: number | string; // Quantity value (যেমন: 1, 500, 250)
   unit?: 'KG' | 'GM' | 'Pcs' | 'Ltr' | string; // Unit (KG বা GM)
-  weightOptions?: { label: string; price: number }[];
+  weightAmount?: string; // Weight amount string (e.g. '১ কেজি')
+  weightOptions?: { label: string; price: number; originalPrice?: number }[];
   currency?: string;
   categoryBn: string;
   categoryEn: string;

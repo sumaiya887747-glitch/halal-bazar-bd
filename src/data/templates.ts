@@ -278,22 +278,22 @@ export const TEMPLATES: Record<string, WebsiteData> = {
         id: 'sp_f3',
         questionBn: 'ডেলিভারি চার্জ কত এবং কতদিনে পণ্য হাতে পাব?',
         questionEn: 'What are the delivery charges and delivery times across Bangladesh?',
-        answerBn: 'ঢাকার ভেতর ডেলিভারি চার্জ ৬০ টাকা (২৪-৪৮ ঘণ্টায় হোম ডেলিভারি) এবং ঢাকার বাইরে ১২০ টাকা (২-৩ দিনে কুরিয়ার হোম ডেলিভারি)। ক্যাশ অন ডেলিভারিতে পণ্য দেখে টাকা পরিশোধ করতে পারবেন।',
-        answerEn: 'Within Dhaka, delivery fee is ৳60 (arrives in 24–48 hours). Outside Dhaka, fee is ৳120 (arrives in 2–3 business days). Cash on Delivery is supported nationwide.'
+        answerBn: 'ঢাকার ভেতর ডেলিভারি চার্জ ৭০ টাকা (২৪-৪৮ ঘণ্টায় হোম ডেলিভারি) এবং ঢাকার বাইরে ১৩০ টাকা (২-৩ দিনে কুরিয়ার হোম ডেলিভারি)। ক্যাশ অন ডেলিভারিতে পণ্য দেখে টাকা পরিশোধ করতে পারবেন।',
+        answerEn: 'Within Dhaka, delivery fee is ৳70 (arrives in 24–48 hours). Outside Dhaka, fee is ৳130 (arrives in 2–3 business days). Cash on Delivery is supported nationwide.'
       }
     ],
 
     contactTitleBn: 'পাইকারি ও রিটেইল অর্ডার এবং সহায়তা',
     contactTitleEn: 'Customer Support & Bulk Inquiries',
-    contactDescBn: 'যেকোনো ড্রাই ফ্রুটস, বাদাম বা পোশাকের অর্ডার, সাইজ সম্পর্কে তথ্য বা সহায়তার জন্য কল করুন অথবা সরাসরি মেসেজ দিন।',
-    contactDescEn: 'For custom retail orders, wholesale dry fruits supply, or support inquiries, contact our customer relations team.',
-    contactEmail: 'order@halalbazarbd.com',
-    contactPhone: '+880 1711-889900',
-    contactAddressBn: 'রোড ৪, ব্লক বি, মিরপুর ডিওএইচএস, ঢাকা ১২১৬',
-    contactAddressEn: 'Road 4, Block B, Mirpur DOHS, Dhaka 1216',
+    contactDescBn: 'যেকোনো ড্রাই ফ্রুটস, বাদাম বা পণ্যের অর্ডার ও সহায়তার জন্য কল করুন অথবা সরাসরি মেসেজ দিন।',
+    contactDescEn: 'For customer orders or support inquiries, contact our customer relations team.',
+    contactEmail: 'tanvir.ahmed.personal.access88@gmail.com',
+    contactPhone: '01329571899, 01793439488',
+    contactAddressBn: 'Hemayetpur , Savar ,Dhaka .',
+    contactAddressEn: 'Hemayetpur, Savar, Dhaka',
 
-    footerTextBn: 'সর্বস্বত্ব সংরক্ষিত। হালাল বাজার বিডি – প্রিমিয়াম ড্রাই ফ্রুটস ও পোশাকের বিশ্বস্ত ঠিকানা।',
-    footerTextEn: 'All rights reserved. Halal Bazar BD - Premium Dry Fruits & Apparel Store.',
+    footerTextBn: 'সর্বস্বত্ব সংরক্ষিত। হালাল বাজার বিডি – প্রিমিয়াম ড্রাই ফ্রুটস ও বাদামের বিশ্বস্ত ঠিকানা।',
+    footerTextEn: 'All rights reserved. Halal Bazar BD - Premium Dry Fruits & Nuts Store.',
 
     navItems: [
       { id: 'about', labelBn: 'বিশুদ্ধতা', labelEn: 'Purity', href: '#about' },

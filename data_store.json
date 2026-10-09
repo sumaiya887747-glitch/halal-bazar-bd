@@ -249,31 +249,55 @@
     "categoryNavItems": [
       {
         "id": "cat-all",
-        "labelBn": "সব পণ্য",
-        "labelEn": "All Products",
+        "labelBn": "সব ড্রাই ফ্রুটস ও নাড়ু",
+        "labelEn": "All Dry Fruits & Naru",
         "categoryKey": "all",
-        "icon": "🛍️"
-      },
-      {
-        "id": "cat-honey",
-        "icon": "🍯",
-        "labelBn": "খাঁটি মধু ও বীজ (Honey)",
-        "labelEn": "Honey & Seeds",
-        "categoryKey": "honey"
+        "icon": "🥜"
       },
       {
         "id": "cat-nuts",
-        "icon": "🥜",
-        "labelBn": "বাদাম ও ড্রাই ফ্রুটস (Nuts & Seeds)",
-        "labelEn": "Nuts & Seeds",
+        "labelBn": "প্রিমিয়াম বাদাম",
+        "labelEn": "Premium Nuts",
         "categoryKey": "nuts"
       },
       {
-        "icon": "🌴",
-        "labelBn": "প্রিমিয়াম খেজুর (Dates)",
+        "id": "cat-naru",
+        "labelBn": "ঐতিহ্যবাহী নাড়ু ও মিষ্টি",
+        "labelEn": "Traditional Naru & Sweets",
+        "categoryKey": "naru",
+        "icon": "🥥",
+        "badge": "স্পেশাল"
+      },
+      {
         "id": "cat-dates",
-        "labelEn": "Dates & Apricots",
+        "labelBn": "খেজুর ও আঞ্জির",
+        "labelEn": "Dates & Figs",
         "categoryKey": "dates"
+      },
+      {
+        "id": "cat-raisins",
+        "labelBn": "কিসমিস ও বেরি",
+        "labelEn": "Raisins & Berries",
+        "categoryKey": "raisins"
+      },
+      {
+        "id": "cat-mix",
+        "labelBn": "মিক্সড ড্রাই ফ্রুটস",
+        "labelEn": "Mixed Dry Fruits",
+        "categoryKey": "mix"
+      },
+      {
+        "id": "cat-dryfruits",
+        "labelBn": "ড্রাই ফ্রুটস",
+        "labelEn": "Dry Fruits",
+        "categoryKey": "dryfruits"
+      },
+      {
+        "id": "cat-dress",
+        "labelBn": "পোশাক কালেকশন",
+        "labelEn": "Apparel Collection",
+        "categoryKey": "dress",
+        "icon": "👗"
       }
     ],
     "facebookUrl": "https://www.facebook.com/profile.php?id=100069870883835",

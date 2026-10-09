@@ -285,50 +285,10 @@ export default function App() {
       } catch (e) {}
     };
 
-    // Initial sync
+    // Initial server sync
     syncWithServer();
-    
-    // Setup real-time listeners from Firestore
-    const setupFirebaseListeners = () => {
-      try {
-        // Real-time listener for products
-        const productsCol = collection(db, 'products');
-        onSnapshot(productsCol, (snapshot) => {
-          if (!snapshot.empty) {
-            const firestoreProducts = snapshot.docs.map(doc => doc.data() as ProductItem);
-            console.log('App: Products from Firestore:', firestoreProducts);
-            setProducts(firestoreProducts);
-          } else {
-            // Firestore is empty or unpopulated, use default real products
-            setProducts((prev) => (prev && prev.length > 0 ? prev : DEFAULT_REAL_PRODUCTS));
-          }
-        }, (err) => {
-          console.warn('Firestore snapshot error (using local/server fallback):', err.message);
-        });
 
-        // Real-time listener for settings
-        const parts = ['general', 'appearance', 'homepage', 'payments', 'content'];
-        parts.forEach((part) => {
-          const docRef = doc(db, 'settings', part);
-          onSnapshot(
-            docRef,
-            (docSnap) => {
-              if (docSnap.exists()) {
-                setStoreSettings((prev) => ({ ...prev, ...docSnap.data() }));
-              }
-            },
-            (err) => {
-              console.warn('Firestore settings listener warning (using local fallback):', err.message);
-            }
-          );
-        });
-      } catch (e) {
-        console.warn('Error setting up Firestore listeners:', e);
-      }
-    };
-    setupFirebaseListeners();
-
-    const interval = setInterval(syncWithServer, 1000);
+    const interval = setInterval(syncWithServer, 2000);
     return () => {
       active = false;
       if (eventSource) {
@@ -383,24 +343,26 @@ export default function App() {
     const defaultSettings: StoreSettings = {
       storeName: 'Halal Bazar BD',
       storeTagline: 'শতভাগ প্রিমিয়াম ড্রাই ফ্রুটস, বাদাম এবং এক্সক্লুসিভ কোয়ালিটি পোশাক ও ফ্যাশন কালেকশন',
+      storeBadgeBn: 'বিশ্বাস ও শুদ্ধতার আস্থা',
       logoLetter: 'হ',
       logoImage: undefined,
       primaryColor: '#064e3b', // গাঢ় সবুজ (Deep Green)
       secondaryColor: '#0284c7', // আকর্ষণীয় আকাশী ব্লু (Sky Blue)
       themeId: 'emerald-deep-green',
-      phone: '+880 1711-889900',
-      email: 'order@halalbazarbd.com',
-      address: 'রোড ৪, ব্লক বি, মিরপুর ডিওএইচএস, ঢাকা ১২১৬',
-      deliveryFeeDhaka: 60,
-      deliveryFeeOutside: 120,
+      phone: '01329571899,01793439488',
+      email: 'tanvir.ahmed.personal.access88@gmail.com',
+      address: 'Hemayetpur , Savar ,Dhaka .',
+      deliveryFeeDhaka: 70,
+      deliveryFeeOutside: 130,
       lowStockThreshold: 5,
       enableLowStockAlerts: true,
       nextInvoiceNumber: 1,
       invoicePrefix: 'INV-',
-      bkashNumber: '01711-889900',
+      bkashNumber: '01329571899',
       bkashType: 'personal',
-      nagadNumber: '01711-889900',
+      nagadNumber: '01329571899',
       nagadType: 'personal',
+      whatsappNumber: '01329571899',
       paymentInstructionsBn: 'বিকাশ বা নগদ থেকে উপরের নম্বরে Send Money / পেমেন্ট করার পর নিচের বক্সে আপনার বিকাশ/নগদ নম্বর এবং ট্রানজেকশন আইডি (TrxID) প্রদান করুন।',
       announcementText: 'বিশেষ ধামাকা অফার: সকল প্রিমিয়াম ড্রাই ফ্রুটস ও পোশাকে আকর্ষণীয় মূল্যছাড়!',
       isAnnouncementActive: true,
@@ -418,8 +380,7 @@ export default function App() {
       footerText: 'হালাল বাজার বিডি — আপনার আস্থার বিশ্বস্ত অনলাইন শপ।',
       navItems: TEMPLATES.spices.navItems,
       categoryNavItems: DEFAULT_CATEGORY_NAV_ITEMS,
-      facebookUrl: 'https://facebook.com/halalbazarbd',
-      whatsappNumber: '01711-889900',
+      facebookUrl: 'https://www.facebook.com/profile.php?id=100069870883835',
       spicesImage: 'https://images.unsplash.com/photo-1596040033229-a9821ebd058d?auto=format&fit=crop&w=800&q=80',
       clothingImage: '/src/assets/images/hero_premium_apparel_1791006163359.jpg',
     };
@@ -430,6 +391,31 @@ export default function App() {
         const merged: StoreSettings = { ...defaultSettings, ...parsed };
         if (merged.storeName === 'Halal Bazar BD - Pure & Organic Products') {
           merged.storeName = 'Halal Bazar BD';
+        }
+        // Sanitize any stale dummy contact info that might linger in localStorage
+        if (merged.address?.includes('মিরপুর') || merged.address?.includes('Mirpur')) {
+          merged.address = defaultSettings.address;
+        }
+        if (merged.phone?.includes('880 1711-889900') || merged.phone?.includes('01711-889900')) {
+          merged.phone = defaultSettings.phone;
+        }
+        if (merged.email?.includes('order@halalbazarbd.com')) {
+          merged.email = defaultSettings.email;
+        }
+        if (merged.whatsappNumber?.includes('01711-889900')) {
+          merged.whatsappNumber = defaultSettings.whatsappNumber;
+        }
+        if (merged.bkashNumber?.includes('01711-889900')) {
+          merged.bkashNumber = defaultSettings.bkashNumber;
+        }
+        if (merged.nagadNumber?.includes('01711-889900')) {
+          merged.nagadNumber = defaultSettings.nagadNumber;
+        }
+        if (merged.deliveryFeeDhaka === 60) {
+          merged.deliveryFeeDhaka = 70;
+        }
+        if (merged.deliveryFeeOutside === 120) {
+          merged.deliveryFeeOutside = 130;
         }
         if (Array.isArray(parsed.navItems)) {
           merged.navItems = parsed.navItems.map((item: any) => {
@@ -924,43 +910,63 @@ export default function App() {
     // 1. Listen for real-time Settings
     const unsubSettings = onSnapshot(doc(db, 'settings', 'global'), (docSnap) => {
       if (docSnap.exists()) {
-        const data = docSnap.data() as StoreSettings;
-        setStoreSettings((prev) => ({
-          ...prev,
-          ...data,
-          logoImage: data.logoImage || prev.logoImage,
-          heroImage: data.heroImage || prev.heroImage,
-          clothingHeroImage: data.clothingHeroImage || prev.clothingHeroImage,
-          clothingImage: data.clothingImage || prev.clothingImage,
-          spicesImage: data.spicesImage || prev.spicesImage,
-          favicon: data.favicon || prev.favicon,
-          heroSlides: (data.heroSlides && data.heroSlides.length > 0) ? data.heroSlides : prev.heroSlides,
-        }));
-      }
-    }, (err) => {
-      console.warn('Firestore Settings Listener:', err);
-    });
+        const raw = docSnap.data();
+        if (raw) {
+          // Unpack nested categories saved by splitSettingsForFirestore
+          const unpacked: Partial<StoreSettings> = {
+            ...(raw.general || {}),
+            ...(raw.appearance || {}),
+            ...(raw.homepage || {}),
+            ...(raw.payments || {}),
+            ...(raw.content || {}),
+            ...raw,
+          };
+          delete (unpacked as any).general;
+          delete (unpacked as any).appearance;
+          delete (unpacked as any).homepage;
+          delete (unpacked as any).payments;
+          delete (unpacked as any).content;
 
-    // 2. Listen for real-time Products & Inventory
-    const unsubProducts = onSnapshot(doc(db, 'products', 'inventory'), (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        if (Array.isArray(data?.items) && data.items.length > 0) {
-          if (data.updatedBy !== CLIENT_ID) {
-            setProducts((prev) => {
-              return data.items.map((cloudItem: ProductItem) => {
-                const localMatch = prev.find((p) => p.id === cloudItem.id);
-                if (localMatch && localMatch.image && localMatch.image.startsWith('data:') && !cloudItem.image?.startsWith('data:')) {
-                  return { ...cloudItem, image: localMatch.image };
-                }
-                return cloudItem;
-              });
-            });
-          }
+          setStoreSettings((prev) => ({
+            ...prev,
+            ...unpacked,
+            logoImage: unpacked.logoImage || prev.logoImage,
+            heroImage: unpacked.heroImage || prev.heroImage,
+            clothingHeroImage: unpacked.clothingHeroImage || prev.clothingHeroImage,
+            clothingImage: unpacked.clothingImage || prev.clothingImage,
+            spicesImage: unpacked.spicesImage || prev.spicesImage,
+            favicon: unpacked.favicon || prev.favicon,
+            heroSlides: (unpacked.heroSlides && unpacked.heroSlides.length > 0) ? unpacked.heroSlides : prev.heroSlides,
+          }));
         }
       }
     }, (err) => {
-      console.warn('Firestore Products Listener:', err);
+      console.warn('Firestore Settings Listener:', err.message);
+    });
+
+    // 2. Listen for real-time Products & Inventory
+    const unsubProducts = onSnapshot(collection(db, 'products'), (snapshot) => {
+      if (!snapshot.empty) {
+        const firestoreProducts = snapshot.docs
+          .map((doc) => doc.data() as ProductItem)
+          .filter((p) => !!p && !!p.nameBn);
+        if (firestoreProducts.length > 0) {
+          setProducts((prev) => {
+            return firestoreProducts.map((cloudItem: ProductItem) => {
+              const localMatch = prev.find((p) => p.id === cloudItem.id);
+              if (localMatch && localMatch.image && localMatch.image.startsWith('data:') && !cloudItem.image?.startsWith('data:')) {
+                return { ...cloudItem, image: localMatch.image };
+              }
+              return cloudItem;
+            });
+          });
+        }
+      } else {
+        // If Firestore products is empty, keep DEFAULT_REAL_PRODUCTS
+        setProducts((prev) => (prev && prev.length > 0 ? prev : DEFAULT_REAL_PRODUCTS));
+      }
+    }, (err) => {
+      console.warn('Firestore Products Listener:', err.message);
     });
 
     // 3. Listen for real-time Orders
@@ -1387,10 +1393,14 @@ export default function App() {
       const productsCol = collection(db, 'products');
       const snapshot = await getDocs(productsCol);
       
-      // Delete all existing documents in 'products' collection
-      await Promise.all(snapshot.docs.map(d => deleteDoc(d.ref)));
+      // Delete only products that are no longer in the updated list
+      const newProductIds = new Set(newProducts.map(p => p.id));
+      const toDelete = snapshot.docs.filter(d => !newProductIds.has(d.id));
+      if (toDelete.length > 0) {
+        await Promise.all(toDelete.map(d => deleteDoc(d.ref)));
+      }
 
-      // Add new products as individual documents
+      // Add or update current products
       await Promise.all(newProducts.filter(p => !!p.id).map(p => 
         setDoc(doc(db, 'products', p.id), sanitizeForFirestore(p))
       ));
