@@ -1,0 +1,6 @@
+{
+  "name": "খাঁটি মসলাঘর - Pure Spices & Agro Foods",
+  "description": "শতভাগ খাঁটি গুঁড়া মসলা, আস্ত শাহী মসলা, ঘানি ভাঙা তেল, দেশি ঘি ও অর্গানিক গ্রোসারি শপ। ফ্রেশ প্রডাক্ট, ক্যাশ অন ডেলিভারি ও দ্রুত হোম ডেলিভারি।",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

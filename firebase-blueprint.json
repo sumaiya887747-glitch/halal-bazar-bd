@@ -1,0 +1,68 @@
+{
+  "entities": {
+    "AdminOrder": {
+      "title": "Admin Order",
+      "description": "Customer purchase records and invoices",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "orderNumber": { "type": "string" },
+        "invoiceNumber": { "type": "string" },
+        "serialNo": { "type": "integer" },
+        "customerName": { "type": "string", "maxLength": 100 },
+        "customerPhone": { "type": "string", "maxLength": 20 },
+        "customerAddress": { "type": "string", "maxLength": 500 },
+        "deliveryArea": { "type": "string", "enum": ["dhaka", "outside"] },
+        "paymentMethod": { "type": "string", "enum": ["cod", "bkash", "nagad"] },
+        "items": { "type": "array" },
+        "subtotal": { "type": "number" },
+        "deliveryFee": { "type": "number" },
+        "total": { "type": "number" },
+        "status": { "type": "string", "enum": ["pending", "confirmed", "shipped", "delivered", "cancelled"] },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "customerName", "customerPhone", "total", "status"]
+    },
+    "FormSubmission": {
+      "title": "Form Submission",
+      "description": "Contact, booking, or quote requests",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string", "maxLength": 100 },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "message": { "type": "string", "maxLength": 2000 },
+        "type": { "type": "string" },
+        "timestamp": { "type": "string" }
+      },
+      "required": ["id", "name", "type"]
+    },
+    "StoreSettings": {
+      "title": "Store Settings",
+      "description": "Global website and store configuration",
+      "type": "object",
+      "properties": {
+        "storeName": { "type": "string" },
+        "storeTagline": { "type": "string" },
+        "primaryColor": { "type": "string" },
+        "phone": { "type": "string" },
+        "address": { "type": "string" }
+      }
+    }
+  },
+  "firestore": {
+    "/orders/{orderId}": {
+      "schema": "AdminOrder",
+      "description": "Collection of all store orders"
+    },
+    "/submissions/{subId}": {
+      "schema": "FormSubmission",
+      "description": "User form submissions"
+    },
+    "/settings/global": {
+      "schema": "StoreSettings",
+      "description": "Singleton for store settings"
+    }
+  }
+}
