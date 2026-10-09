@@ -16,7 +16,6 @@ import {
   WebsiteData,
 } from './types/website';
 import { COLOR_THEMES, TEMPLATES, DEFAULT_BANNER_SLIDES } from './data/templates';
-import { DEFAULT_PRODUCTS } from './data/mockProducts';
 import { AdminOrder, AdminTab, OrderStatus, StoreSettings } from './types/admin';
 import { SiteHeader } from './components/site/SiteHeader';
 import { CategoryNavBar, DEFAULT_CATEGORY_NAV_ITEMS } from './components/site/CategoryNavBar';
