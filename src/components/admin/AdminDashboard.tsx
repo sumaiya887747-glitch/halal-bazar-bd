@@ -163,6 +163,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [bulkStatusToApply, setBulkStatusToApply] = useState<OrderStatus>('confirmed');
   const [isBulkUpdating, setIsBulkUpdating] = useState(false);
 
+  // Bulk Product Selection State
+  const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
+
   const [currentUser, setCurrentUser] = useState<any>(() => {
     try {
       const stored = localStorage.getItem('hb_admin_current_user');
@@ -639,6 +642,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     }
   };
 
+  const handleBulkDeleteOrders = () => {
+    if (selectedOrderIds.length === 0) return;
+    setDeleteConfirmation({
+      type: 'order',
+      id: selectedOrderIds.join(','),
+      title: `${selectedOrderIds.length}টি অর্ডার মুছে ফেলা`,
+      subtitle: `সিলেক্ট করা ${selectedOrderIds.length}টি অর্ডার ডাটাবেস থেকে স্থায়ীভাবে মুছে ফেলা হবে`
+    });
+  };
+
   // Filtered Products
   const filteredProducts = products.filter((p) => {
     const isClothing = isClothingProduct(p);
@@ -658,6 +671,42 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       (p.stockStatusText && p.stockStatusText.toLowerCase().includes(q))
     );
   });
+
+  // Bulk Product Selection Helpers
+  const isAllFilteredProductsSelected =
+    filteredProducts.length > 0 &&
+    filteredProducts.every((p) => selectedProductIds.includes(p.id));
+
+  const isSomeFilteredProductsSelected =
+    filteredProducts.some((p) => selectedProductIds.includes(p.id)) &&
+    !isAllFilteredProductsSelected;
+
+  const handleToggleSelectAllProducts = () => {
+    if (isAllFilteredProductsSelected) {
+      const filteredIdsSet = new Set(filteredProducts.map((p) => p.id));
+      setSelectedProductIds((prev) => prev.filter((id) => !filteredIdsSet.has(id)));
+    } else {
+      const newSelected = new Set(selectedProductIds);
+      filteredProducts.forEach((p) => newSelected.add(p.id));
+      setSelectedProductIds(Array.from(newSelected));
+    }
+  };
+
+  const handleToggleSelectProduct = (productId: string) => {
+    setSelectedProductIds((prev) =>
+      prev.includes(productId) ? prev.filter((id) => id !== productId) : [...prev, productId]
+    );
+  };
+
+  const handleBulkDeleteProducts = () => {
+    if (selectedProductIds.length === 0) return;
+    setDeleteConfirmation({
+      type: 'product',
+      id: selectedProductIds.join(','),
+      title: `${selectedProductIds.length}টি পণ্য ডিলিট`,
+      subtitle: `সিলেক্ট করা ${selectedProductIds.length}টি পণ্য স্টোর থেকে স্থায়ীভাবে মুছে ফেলা হবে`
+    });
+  };
 
   const handleToggleProductStock = (productId: string, currentInStock: boolean) => {
     const newInStock = !currentInStock;
@@ -794,23 +843,35 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         setSelectedWholesaleItem(null);
       }
     } else if (type === 'order') {
-      if (id.startsWith('customer-')) {
+      if (id.includes(',')) {
+        const ids = id.split(',').filter(Boolean);
+        ids.forEach((oId) => onDeleteOrder?.(oId));
+        setSelectedOrderIds([]);
+      } else if (id.startsWith('customer-')) {
         const key = id.replace('customer-', '');
         activeOrders
           .filter((o) => (o.customerPhone.trim() || o.customerName.trim()) === key)
           .forEach((o) => onDeleteOrder?.(o.id));
       } else {
         onDeleteOrder?.(id);
+        setSelectedOrderIds((prev) => prev.filter((oId) => oId !== id));
       }
-      if (editingOrder?.id === id) {
+      if (editingOrder?.id && (editingOrder.id === id || id.split(',').includes(editingOrder.id))) {
         setEditingOrder(null);
       }
-      if (invoiceOrder?.id === id) {
+      if (invoiceOrder?.id && (invoiceOrder.id === id || id.split(',').includes(invoiceOrder.id))) {
         setInvoiceOrder(null);
       }
     } else if (type === 'product') {
-      handleDeleteProduct(id);
-      if (editingProduct?.id === id) {
+      if (id.includes(',')) {
+        const idsToDelete = new Set(id.split(',').filter(Boolean));
+        onUpdateProducts(products.filter((p) => !idsToDelete.has(p.id)));
+        setSelectedProductIds([]);
+      } else {
+        handleDeleteProduct(id);
+        setSelectedProductIds((prev) => prev.filter((pId) => pId !== id));
+      }
+      if (editingProduct?.id && (editingProduct.id === id || id.split(',').includes(editingProduct.id))) {
         setProductModalOpen(false);
         setEditingProduct(null);
       }
@@ -2234,6 +2295,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
                       <button
                         type="button"
+                        onClick={handleBulkDeleteOrders}
+                        disabled={isBulkUpdating}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition-all shadow-sm active:scale-95 disabled:opacity-50 cursor-pointer"
+                        title="সিলেক্ট করা সব অর্ডার মুছে ফেলুন"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>মুছে ফেলুন ({selectedOrderIds.length})</span>
+                      </button>
+
+                      <button
+                        type="button"
                         onClick={() => setSelectedOrderIds([])}
                         disabled={isBulkUpdating}
                         className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white hover:bg-neutral-100 text-neutral-700 text-xs font-bold border border-neutral-200 transition-colors cursor-pointer"
@@ -2916,12 +2988,67 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 onQuickRestock={handleQuickRestockProduct}
               />
 
+              {/* Bulk Actions Bar for Products */}
+              {selectedProductIds.length > 0 && (
+                <div className="p-3 bg-gradient-to-r from-red-50 via-rose-50 to-amber-50 border-2 border-red-500/40 rounded-2xl shadow-sm flex flex-wrap items-center justify-between gap-3 animate-fadeIn">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-red-600 text-white flex items-center justify-center font-black text-xs shadow-sm">
+                      {selectedProductIds.length}
+                    </div>
+                    <div>
+                      <div className="text-xs font-black text-red-950 flex items-center gap-1.5">
+                        <span>{selectedProductIds.length}টি পণ্য সিলেক্ট করা হয়েছে</span>
+                        <span className="text-[10px] bg-red-200 text-red-900 px-1.5 py-0.5 rounded-md font-bold">Bulk Action</span>
+                      </div>
+                      <div className="text-[11px] text-red-800">
+                        সিলেক্ট করা পণ্যগুলো একসাথে স্টোর থেকে স্থায়ীভাবে ডিলিট করুন
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleBulkDeleteProducts}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer"
+                      title="সিলেক্ট করা সব পণ্য ডিলিট করুন"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>একসাথে মুছে ফেলুন ({selectedProductIds.length})</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setSelectedProductIds([])}
+                      className="inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-white hover:bg-neutral-100 text-neutral-700 text-xs font-bold border border-neutral-200 transition-colors cursor-pointer"
+                      title="সিলেকশন বাতিল করুন"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                      <span>বাতিল</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Products Table */}
-              <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
+              <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden shadow-2xs">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
                     <thead>
                       <tr className="bg-neutral-50 border-b border-neutral-200 text-neutral-500 uppercase tracking-wider text-[11px]">
+                        <th className="py-3 px-3 w-10 text-center">
+                          <input
+                            type="checkbox"
+                            checked={isAllFilteredProductsSelected}
+                            ref={(el) => {
+                              if (el) el.indeterminate = isSomeFilteredProductsSelected;
+                            }}
+                            onChange={handleToggleSelectAllProducts}
+                            disabled={filteredProducts.length === 0}
+                            title="সব পণ্য সিলেক্ট / আন-সিলেক্ট করুন"
+                            className="w-4 h-4 rounded border-neutral-300 text-red-600 focus:ring-red-500 cursor-pointer accent-red-600"
+                          />
+                        </th>
                         <th className="py-3 px-4">ছবি</th>
                         <th className="py-3 px-4">পণ্যের নাম</th>
                         <th className="py-3 px-4">ক্যাটাগরি</th>
@@ -2933,13 +3060,41 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-neutral-100">
-                      {filteredProducts.map((prod) => {
-                        const isLow = isProductLowStock(prod, currentLowStockThreshold);
-                        const stockInfo = getStockStatusDisplay(prod, currentLowStockThreshold);
+                      {filteredProducts.length === 0 ? (
+                        <tr>
+                          <td colSpan={9} className="py-12 text-center text-neutral-500 font-medium">
+                            কোনো পণ্য পাওয়া যায়নি।
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredProducts.map((prod) => {
+                          const isLow = isProductLowStock(prod, currentLowStockThreshold);
+                          const stockInfo = getStockStatusDisplay(prod, currentLowStockThreshold);
+                          const isSelected = selectedProductIds.includes(prod.id);
 
-                        return (
-                        <tr key={prod.id} className={`hover:bg-neutral-50/60 transition-colors ${prod.inStock === false ? 'bg-rose-50/20' : isLow ? 'bg-amber-50/25' : ''}`}>
-                          <td className="py-2.5 px-4">
+                          return (
+                          <tr 
+                            key={prod.id} 
+                            className={`transition-colors ${
+                              isSelected
+                                ? 'bg-red-50/70 hover:bg-red-50'
+                                : prod.inStock === false
+                                ? 'bg-rose-50/20 hover:bg-neutral-50/60'
+                                : isLow
+                                ? 'bg-amber-50/25 hover:bg-neutral-50/60'
+                                : 'hover:bg-neutral-50/60'
+                            }`}
+                          >
+                            <td className="py-2.5 px-3 text-center">
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => handleToggleSelectProduct(prod.id)}
+                                title={`${prod.nameBn} সিলেক্ট করুন`}
+                                className="w-4 h-4 rounded border-neutral-300 text-red-600 focus:ring-red-500 cursor-pointer accent-red-600"
+                              />
+                            </td>
+                            <td className="py-2.5 px-4">
                             <div className="w-10 h-10 rounded-lg overflow-hidden bg-neutral-100 border border-neutral-200 shrink-0 relative">
                               {prod.image ? (
                                 <img
@@ -3103,7 +3258,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                           </td>
                         </tr>
                         );
-                      })}
+                      })
+                    )}
                     </tbody>
                   </table>
                 </div>

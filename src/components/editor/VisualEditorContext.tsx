@@ -12,7 +12,7 @@ interface VisualEditorContextType {
 
 const VisualEditorContext = createContext<VisualEditorContextType>({
   isLivePreview: false,
-  showEditIcons: true,
+  showEditIcons: false,
   setShowEditIcons: () => {},
   openQuickEdit: () => {},
   activeQuickEdit: null,
@@ -30,7 +30,7 @@ export const VisualEditorProvider: React.FC<VisualEditorProviderProps> = ({
   children,
   isLivePreview,
 }) => {
-  const [showEditIcons, setShowEditIcons] = useState(true);
+  const [showEditIcons, setShowEditIcons] = useState(false);
   const [activeQuickEdit, setActiveQuickEdit] = useState<QuickEditTarget | null>(null);
 
   const openQuickEdit = (target: QuickEditTarget) => {

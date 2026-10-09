@@ -15,7 +15,7 @@ import {
   TestimonialItem,
   WebsiteData,
 } from './types/website';
-import { COLOR_THEMES, TEMPLATES, DEFAULT_BANNER_SLIDES } from './data/templates';
+import { COLOR_THEMES, TEMPLATES, DEFAULT_BANNER_SLIDES, DEFAULT_REAL_PRODUCTS } from './data/templates';
 import { AdminOrder, AdminTab, OrderStatus, StoreSettings } from './types/admin';
 import { SiteHeader } from './components/site/SiteHeader';
 import { CategoryNavBar, DEFAULT_CATEGORY_NAV_ITEMS } from './components/site/CategoryNavBar';
@@ -250,20 +250,10 @@ export default function App() {
         setTestimonials(data.testimonials);
       }
 
-      // Products are now managed exclusively via Firestore, ignoring API sync data
-      /*
+      // Products synchronization from server (always update if valid list provided)
       if (Array.isArray(data.products) && data.products.length > 0) {
-        setProducts((prev) => {
-          return data.products.map((serverItem: ProductItem) => {
-            const localMatch = prev.find((p) => p.id === serverItem.id);
-            if (localMatch && localMatch.image && localMatch.image.startsWith('data:') && !serverItem.image?.startsWith('data:')) {
-              return { ...serverItem, image: localMatch.image };
-            }
-            return serverItem;
-          });
-        });
+        setProducts(data.products);
       }
-      */
 
       if (data.settings && typeof data.settings === 'object' && Object.keys(data.settings).length > 0) {
         setStoreSettings((prev) => ({ ...prev, ...data.settings }));
@@ -304,23 +294,36 @@ export default function App() {
         // Real-time listener for products
         const productsCol = collection(db, 'products');
         onSnapshot(productsCol, (snapshot) => {
-          const firestoreProducts = snapshot.docs.map(doc => doc.data() as ProductItem);
-          console.log('App: Products from Firestore:', firestoreProducts);
-          setProducts(firestoreProducts);
+          if (!snapshot.empty) {
+            const firestoreProducts = snapshot.docs.map(doc => doc.data() as ProductItem);
+            console.log('App: Products from Firestore:', firestoreProducts);
+            setProducts(firestoreProducts);
+          } else {
+            // Firestore is empty or unpopulated, use default real products
+            setProducts((prev) => (prev && prev.length > 0 ? prev : DEFAULT_REAL_PRODUCTS));
+          }
+        }, (err) => {
+          console.warn('Firestore snapshot error (using local/server fallback):', err.message);
         });
 
         // Real-time listener for settings
         const parts = ['general', 'appearance', 'homepage', 'payments', 'content'];
         parts.forEach((part) => {
           const docRef = doc(db, 'settings', part);
-          onSnapshot(docRef, (docSnap) => {
-            if (docSnap.exists()) {
-              setStoreSettings((prev) => ({ ...prev, ...docSnap.data() }));
+          onSnapshot(
+            docRef,
+            (docSnap) => {
+              if (docSnap.exists()) {
+                setStoreSettings((prev) => ({ ...prev, ...docSnap.data() }));
+              }
+            },
+            (err) => {
+              console.warn('Firestore settings listener warning (using local fallback):', err.message);
             }
-          });
+          );
         });
       } catch (e) {
-        console.error('Error setting up Firestore listeners', e);
+        console.warn('Error setting up Firestore listeners:', e);
       }
     };
     setupFirebaseListeners();
@@ -350,21 +353,29 @@ export default function App() {
     };
   }, []);
 
-  // Live Products State with localStorage (starts empty, then synced)
-  const [products, setProducts] = useState<ProductItem[]>([]);
+  // Live Products State with localStorage (starts with DEFAULT_REAL_PRODUCTS if empty)
+  const [products, setProducts] = useState<ProductItem[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('hb_live_products');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            return parsed;
+          }
+        } catch (e) {}
+      }
+    }
+    return DEFAULT_REAL_PRODUCTS;
+  });
 
   useEffect(() => {
-    console.log('App: products state initialized or updated', products);
     localStorage.setItem('hb_live_products', JSON.stringify(products));
     try {
       const ch = new BroadcastChannel('halal_bazar_realtime_sync');
       ch.postMessage({ type: 'SYNC_PRODUCTS', payload: products, sender: CLIENT_ID });
       ch.close();
     } catch (e) {}
-
-    // Persist to Firestore
-    Promise.all(products.filter(p => !!p.id).map(p => setDoc(doc(db, 'products', p.id), sanitizeForFirestore(p))))
-      .catch((e) => handleFirestoreError(e, OperationType.WRITE, 'products'));
   }, [products]);
 
   // Store Settings with localStorage
@@ -455,13 +466,6 @@ export default function App() {
       ch.postMessage({ type: 'SYNC_SETTINGS', payload: storeSettings, sender: CLIENT_ID });
       ch.close();
     } catch (e) {}
-
-    // Persist to Firestore
-    const splitData = splitSettingsForFirestore(storeSettings);
-    Object.entries(splitData).forEach(([key, value]) => {
-      setDoc(doc(db, 'settings', key), value)
-        .catch((e) => handleFirestoreError(e, OperationType.WRITE, `settings/${key}`));
-    });
   }, [storeSettings]);
 
   useEffect(() => {
@@ -1964,21 +1968,7 @@ export default function App() {
         onOpenCart={() => setCartOpen(true)}
       />
 
-      {/* 3. About & Metrics */}
-      <AboutSection
-        siteData={currentSiteData}
-        theme={activeTheme}
-        language={language}
-      />
-
-      {/* 4. Services Section */}
-      <ServicesSection
-        siteData={currentSiteData}
-        theme={activeTheme}
-        language={language}
-      />
-
-      {/* 5. Combined Tabbed Product Showcase (Product listings remain here at the bottom) */}
+      {/* 3. Combined Tabbed Product Showcase (Directly visible to customer after Hero) */}
       <div id="products-list-showcase">
         {activeCategoryTab === 'spices' ? (
           <SpicesSection
@@ -2004,6 +1994,20 @@ export default function App() {
           />
         )}
       </div>
+
+      {/* 4. About & Metrics */}
+      <AboutSection
+        siteData={currentSiteData}
+        theme={activeTheme}
+        language={language}
+      />
+
+      {/* 5. Services Section */}
+      <ServicesSection
+        siteData={currentSiteData}
+        theme={activeTheme}
+        language={language}
+      />
 
       {/* 6. Portfolio (if applicable) */}
       {currentSiteData.portfolio && currentSiteData.portfolio.length > 0 && (
