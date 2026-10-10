@@ -5503,8 +5503,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                   type="button"
                                   onClick={() => setTempSettings({
                                     ...tempSettings,
-                                    clothingHeroImage: '/src/assets/images/hero_premium_apparel_1791006163359.jpg',
-                                    clothingImage: '/src/assets/images/hero_premium_apparel_1791006163359.jpg'
+                                    clothingHeroImage: '/assets/images/hero_premium_apparel_1791006163359.jpg',
+                                    clothingImage: '/assets/images/hero_premium_apparel_1791006163359.jpg'
                                   })}
                                   className="px-2.5 py-1.5 rounded-lg border border-purple-200 bg-white hover:bg-purple-50 text-purple-900 text-[10px] font-bold cursor-pointer transition-colors"
                                   title="ডিফল্ট পোশাকে রিসেট করুন"
@@ -6550,7 +6550,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                               <div className="flex gap-1.5">
                                 <button
                                   type="button"
-                                  onClick={() => setTempSettings({ ...tempSettings, clothingImage: '/src/assets/images/hero_premium_apparel_1791006163359.jpg' })}
+                                  onClick={() => setTempSettings({ ...tempSettings, clothingImage: '/assets/images/hero_premium_apparel_1791006163359.jpg' })}
                                   className="px-2 py-1.5 rounded-lg border border-emerald-200 text-emerald-950 bg-emerald-50 hover:bg-emerald-100 font-bold cursor-pointer"
                                   title="ডিফল্ট পোশাকের ছবিতে রিসেট করুন"
                                 >

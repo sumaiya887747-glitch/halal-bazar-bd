@@ -16,14 +16,14 @@ function loadData() {
         orders: data.orders || [],
         submissions: data.submissions || [],
         testimonials: data.testimonials || [],
-        products: data.products || null,
+        products: data.products || [],
         settings: data.settings || null,
       };
     } catch (e) {
       console.error('Failed to parse store file, resetting:', e);
     }
   }
-  return { orders: [], submissions: [], testimonials: [], products: null, settings: null };
+  return { orders: [], submissions: [], testimonials: [], products: [], settings: null };
 }
 
 // Helper to save persisted data

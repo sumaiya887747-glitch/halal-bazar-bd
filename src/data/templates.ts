@@ -1,32 +1,6 @@
 import { WebsiteData, ColorTheme, BannerSlide, ProductItem } from '../types/website';
 
-export const DEFAULT_REAL_PRODUCTS: ProductItem[] = [
-  {
-    id: 'prod-kaju-badam-1',
-    nameBn: 'কাজু বাদাম',
-    nameEn: 'Cashew Nuts',
-    categoryBn: 'বাদাম ও ড্রাই ফ্রুটস',
-    categoryEn: 'Nuts & Dry Fruits',
-    price: 1790,
-    originalPrice: 1890,
-    discountPercent: 5,
-    inStock: true,
-    stockQuantity: 50,
-    weightAmount: '১ কেজি',
-    weightOptions: [
-      { label: '১ কেজি', price: 1790, originalPrice: 1890 },
-      { label: '৫০০ গ্রাম', price: 920, originalPrice: 990 },
-      { label: '২৫০ গ্রাম', price: 480, originalPrice: 520 },
-    ],
-    image: 'https://images.unsplash.com/photo-1536591375315-1b836890327b?auto=format&fit=crop&w=800&q=80',
-    descBn: '১০০% ফ্রেশ, ক্রিস্পি ও প্রিমিয়াম গ্রেডের কাজু বাদাম। কোনো কৃত্রিম কেমিক্যাল বা প্রিজারভেটিভ ছাড়া সরাসরি সেরা বাগান থেকে সংগৃহীত।',
-    descEn: '100% fresh and premium quality cashew nuts directly sourced without any additives.',
-    badgeBn: 'প্রিমিয়াম কোয়ালিটি',
-    badgeEn: 'Premium Quality',
-    rating: 5,
-    reviewsCount: 18,
-  },
-];
+export const DEFAULT_REAL_PRODUCTS: ProductItem[] = [];
 
 export const DEFAULT_BANNER_SLIDES: BannerSlide[] = [
   {
@@ -195,7 +169,7 @@ export const TEMPLATES: Record<string, WebsiteData> = {
     clothingHeroTitle: 'ঐতিহ্যবাহী ও আধুনিক প্রিমিয়াম পোশাক কালেকশন — আভিজাত্য ও ফ্যাশনের সেরা ঠিকানা',
     clothingHeroSubtitle: 'রয়েল কটন এমব্রয়ডারি পাঞ্জাবি, ঐতিহ্যবাহী ঢাকাই জামদানি শাড়ি, প্রিমিয়াম বুটিক থ্রি-পিস, আরামদায়ক পোলো টি-শার্ট ও এক্সক্লুসিভ দুবাই বোরকা-হিজাবের চমৎকার কালেকশন।',
     clothingHeroCtaText: 'পোশাক কালেকশন দেখুন',
-    clothingHeroImage: '/src/assets/images/hero_premium_apparel_1791006163359.jpg',
+    clothingHeroImage: '/assets/images/hero_premium_apparel_1791006163359.jpg',
     clothingHeroFloatingBadge: '১০০% ফেব্রিক ও সাইজ গ্যারান্টি',
 
     aboutBadgeBn: 'আমাদের কোয়ালিটি ও বিশুদ্ধতার অঙ্গীকার',

@@ -52,7 +52,7 @@ import {
 import { db, auth } from './lib/firebase';
 import { signInAnonymously } from 'firebase/auth';
 import { doc, setDoc, getDoc, onSnapshot, collection, query, orderBy, getDocs, deleteDoc } from 'firebase/firestore';
-import { handleFirestoreError, OperationType, sanitizeForFirestore, splitSettingsForFirestore } from './utils/firebaseUtils';
+import { handleFirestoreError, OperationType, sanitizeForFirestore, splitSettingsForFirestore, safeFirestoreWrite } from './utils/firebaseUtils';
 
 const CLIENT_ID = Math.random().toString(36).substring(2, 9);
 
@@ -251,7 +251,7 @@ export default function App() {
       }
 
       // Products synchronization from server (always update if valid list provided)
-      if (Array.isArray(data.products) && data.products.length > 0) {
+      if (Array.isArray(data.products)) {
         setProducts(data.products);
       }
 
@@ -313,15 +313,23 @@ export default function App() {
     };
   }, []);
 
-  // Live Products State with localStorage (starts with DEFAULT_REAL_PRODUCTS if empty)
+  // Live Products State with localStorage (starts empty if no admin products)
   const [products, setProducts] = useState<ProductItem[]>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('hb_live_products');
       if (saved) {
         try {
           const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            return parsed;
+          if (Array.isArray(parsed)) {
+            const demoIds = new Set([
+              'prod-kaju-badam-1', 'prod-kath-badam-2', 'prod-maryam-dates-3',
+              'prod-golden-raisins-4', 'prod-coconut-naru-5', 'prod-mixed-nuts-6',
+              'prod-royal-panjabi-7', 'prod-jamdani-saree-8', 'prod-cotton-threepiece-9',
+              'prod-polo-tshirt-10', 'prod-dubai-borka-11',
+              '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'
+            ]);
+            const filtered = parsed.filter((p: any) => !demoIds.has(p.id) && !p.isDemo);
+            return filtered;
           }
         } catch (e) {}
       }
@@ -345,7 +353,7 @@ export default function App() {
       storeTagline: 'শতভাগ প্রিমিয়াম ড্রাই ফ্রুটস, বাদাম এবং এক্সক্লুসিভ কোয়ালিটি পোশাক ও ফ্যাশন কালেকশন',
       storeBadgeBn: 'বিশ্বাস ও শুদ্ধতার আস্থা',
       logoLetter: 'হ',
-      logoImage: undefined,
+      logoImage: '/assets/images/logo_halal_bazar.png',
       primaryColor: '#064e3b', // গাঢ় সবুজ (Deep Green)
       secondaryColor: '#0284c7', // আকর্ষণীয় আকাশী ব্লু (Sky Blue)
       themeId: 'emerald-deep-green',
@@ -375,14 +383,14 @@ export default function App() {
       clothingHeroTitle: 'ঐতিহ্যবাহী ও আধুনিক প্রিমিয়াম পোশাক কালেকশন — আভিজাত্য ও ফ্যাশনের সেরা ঠিকানা',
       clothingHeroSubtitle: 'রয়েল কটন এমব্রয়ডারি পাঞ্জাবি, ঐতিহ্যবাহী ঢাকাই জামদানি শাড়ি, প্রিমিয়াম বুটিক থ্রি-পিস, আরামদায়ক পোলো টি-শার্ট ও এক্সক্লুসিভ দুবাই বোরকা-হিজাবের চমৎকার কালেকশন।',
       clothingHeroCtaText: 'পোশাক কালেকশন দেখুন',
-      clothingHeroImage: '/src/assets/images/hero_premium_apparel_1791006163359.jpg',
+      clothingHeroImage: '/assets/images/hero_premium_apparel_1791006163359.jpg',
       clothingHeroFloatingBadge: '১০০% ফেব্রিক ও সাইজ গ্যারান্টি',
       footerText: 'হালাল বাজার বিডি — আপনার আস্থার বিশ্বস্ত অনলাইন শপ।',
       navItems: TEMPLATES.spices.navItems,
       categoryNavItems: DEFAULT_CATEGORY_NAV_ITEMS,
       facebookUrl: 'https://www.facebook.com/profile.php?id=100069870883835',
       spicesImage: 'https://images.unsplash.com/photo-1596040033229-a9821ebd058d?auto=format&fit=crop&w=800&q=80',
-      clothingImage: '/src/assets/images/hero_premium_apparel_1791006163359.jpg',
+      clothingImage: '/assets/images/hero_premium_apparel_1791006163359.jpg',
     };
     const saved = localStorage.getItem('hb_store_settings');
     if (saved) {
@@ -628,7 +636,9 @@ export default function App() {
       setArchivedSubmissions((prev) => prev.filter((m) => m.id !== updatedMessage.id));
     }
 
-    setDoc(doc(db, 'submissions', updatedMessage.id), sanitizeForFirestore(updatedMessage)).catch(e => console.error('Firebase Submission Update Error:', e));
+    safeFirestoreWrite('Update Submission Status', () =>
+      setDoc(doc(db, 'submissions', updatedMessage.id), sanitizeForFirestore(updatedMessage))
+    );
 
     fetch('/api/submissions/update', {
       method: 'POST',
@@ -779,7 +789,7 @@ export default function App() {
       ? (storeSettings.clothingHeroCtaText || TEMPLATES.spices.clothingHeroCtaText || activeContent.heroCtaPrimaryBn)
       : (storeSettings.heroCtaText || activeContent.heroCtaPrimaryBn),
     heroImage: isClothing
-      ? (storeSettings.clothingHeroImage || storeSettings.clothingImage || TEMPLATES.spices.clothingHeroImage || '/src/assets/images/hero_premium_apparel_1791006163359.jpg')
+      ? (storeSettings.clothingHeroImage || storeSettings.clothingImage || TEMPLATES.spices.clothingHeroImage || '/assets/images/hero_premium_apparel_1791006163359.jpg')
       : (storeSettings.heroImage || TEMPLATES.spices.heroImage),
     heroBadge: isClothing
       ? (storeSettings.clothingHeroBadge || TEMPLATES.spices.clothingHeroBadge || activeContent.aboutBadgeBn)
@@ -938,6 +948,13 @@ export default function App() {
             favicon: unpacked.favicon || prev.favicon,
             heroSlides: (unpacked.heroSlides && unpacked.heroSlides.length > 0) ? unpacked.heroSlides : prev.heroSlides,
           }));
+
+          if (Array.isArray(raw.products)) {
+            setProducts(raw.products);
+            try {
+              localStorage.setItem('hb_live_products', JSON.stringify(raw.products));
+            } catch (e) {}
+          }
         }
       }
     }, (err) => {
@@ -950,20 +967,10 @@ export default function App() {
         const firestoreProducts = snapshot.docs
           .map((doc) => doc.data() as ProductItem)
           .filter((p) => !!p && !!p.nameBn);
-        if (firestoreProducts.length > 0) {
-          setProducts((prev) => {
-            return firestoreProducts.map((cloudItem: ProductItem) => {
-              const localMatch = prev.find((p) => p.id === cloudItem.id);
-              if (localMatch && localMatch.image && localMatch.image.startsWith('data:') && !cloudItem.image?.startsWith('data:')) {
-                return { ...cloudItem, image: localMatch.image };
-              }
-              return cloudItem;
-            });
-          });
-        }
+        setProducts(firestoreProducts);
       } else {
-        // If Firestore products is empty, keep DEFAULT_REAL_PRODUCTS
-        setProducts((prev) => (prev && prev.length > 0 ? prev : DEFAULT_REAL_PRODUCTS));
+        // If Firestore products is empty, respect admin deletion (do not fallback to demo products)
+        setProducts([]);
       }
     }, (err) => {
       console.warn('Firestore Products Listener:', err.message);
@@ -1055,11 +1062,9 @@ export default function App() {
     setSubmissions((prev) => [newEntry, ...prev]);
 
     // Save to Firebase (Permanent Storage)
-    try {
-      await setDoc(doc(db, 'submissions', subId), sanitizeForFirestore(newEntry));
-    } catch (e) {
-      console.error('Firebase Submission Error:', e);
-    }
+    safeFirestoreWrite('New Submission', () =>
+      setDoc(doc(db, 'submissions', subId), sanitizeForFirestore(newEntry))
+    );
 
     // If it's a shop checkout order, create an AdminOrder
     if (sub.type === 'order' || sub.type === 'express_order') {
@@ -1211,11 +1216,9 @@ export default function App() {
       }
 
       // Save to Firebase (Permanent Storage)
-      try {
-        await setDoc(doc(db, 'orders', newAdminOrder.id), sanitizeForFirestore(newAdminOrder));
-      } catch (e) {
-        console.error('Firebase Order Error:', e);
-      }
+      safeFirestoreWrite('New Order', () =>
+        setDoc(doc(db, 'orders', newAdminOrder.id), sanitizeForFirestore(newAdminOrder))
+      );
 
       fetch('/api/orders', {
         method: 'POST',
@@ -1244,7 +1247,9 @@ export default function App() {
       
       const orderToUpdate = next.find(o => o.id === orderId);
       if (orderToUpdate) {
-        setDoc(doc(db, 'orders', orderId), sanitizeForFirestore(orderToUpdate)).catch(e => console.error('Firebase Status Update Error:', e));
+        safeFirestoreWrite('Update Order Status', () =>
+          setDoc(doc(db, 'orders', orderId), sanitizeForFirestore(orderToUpdate))
+        );
       }
 
       fetch('/api/orders/update', {
@@ -1267,7 +1272,9 @@ export default function App() {
       orderIds.forEach((id) => {
         const orderToUpdate = next.find(o => o.id === id);
         if (orderToUpdate) {
-          setDoc(doc(db, 'orders', id), sanitizeForFirestore(orderToUpdate)).catch(e => console.error('Firebase Bulk Status Update Error:', e));
+          safeFirestoreWrite('Bulk Status Update', () =>
+            setDoc(doc(db, 'orders', id), sanitizeForFirestore(orderToUpdate))
+          );
         }
       });
 
@@ -1296,7 +1303,9 @@ export default function App() {
       setArchivedOrders((prev) => prev.filter((o) => o.id !== updatedOrder.id));
     }
     
-    setDoc(doc(db, 'orders', updatedOrder.id), sanitizeForFirestore(updatedOrder)).catch(e => console.error('Firebase Order Update Error:', e));
+    safeFirestoreWrite('Update Order', () =>
+      setDoc(doc(db, 'orders', updatedOrder.id), sanitizeForFirestore(updatedOrder))
+    );
 
     // Update API
     fetch('/api/orders/update', {
@@ -1321,7 +1330,9 @@ export default function App() {
 
       const orderToUpdate = next.find(o => o.id === orderId);
       if (orderToUpdate) {
-        setDoc(doc(db, 'orders', orderId), sanitizeForFirestore(orderToUpdate)).catch(e => console.error('Firebase Fee Update Error:', e));
+        safeFirestoreWrite('Update Delivery Fee', () =>
+          setDoc(doc(db, 'orders', orderId), sanitizeForFirestore(orderToUpdate))
+        );
       }
 
       fetch('/api/orders/update', {
@@ -1336,8 +1347,9 @@ export default function App() {
   const handleDeleteOrder = (orderId: string) => {
     const orderToArchive = orders.find(o => o.id === orderId);
     if (orderToArchive) {
-      // Mark as archived in Firestore (Never Delete)
-      setDoc(doc(db, 'orders', orderId), sanitizeForFirestore({ ...orderToArchive, isArchived: true })).catch(e => console.error('Firebase Archive Error:', e));
+      safeFirestoreWrite('Archive Order', () =>
+        setDoc(doc(db, 'orders', orderId), sanitizeForFirestore({ ...orderToArchive, isArchived: true }))
+      );
     }
 
     setOrders((prev) => {
@@ -1355,8 +1367,9 @@ export default function App() {
   const handleDeleteMessage = (messageId: string) => {
     const msgToArchive = submissions.find(m => m.id === messageId);
     if (msgToArchive) {
-      // Mark as archived in Firestore (Never Delete)
-      setDoc(doc(db, 'submissions', messageId), sanitizeForFirestore({ ...msgToArchive, isArchived: true })).catch(e => console.error('Firebase Archive Error:', e));
+      safeFirestoreWrite('Archive Message', () =>
+        setDoc(doc(db, 'submissions', messageId), sanitizeForFirestore({ ...msgToArchive, isArchived: true }))
+      );
     }
 
     setSubmissions((prev) => {
@@ -1387,9 +1400,8 @@ export default function App() {
       body: JSON.stringify({ products: newProducts }),
     }).catch(() => {});
 
-    // 2. Sync to Firebase Cloud Firestore
-    try {
-      // Get all current products from Firestore
+    // 2. Sync to Firebase Cloud Firestore (Protected by quota shield)
+    safeFirestoreWrite('Sync Products', async () => {
       const productsCol = collection(db, 'products');
       const snapshot = await getDocs(productsCol);
       
@@ -1404,10 +1416,10 @@ export default function App() {
       await Promise.all(newProducts.filter(p => !!p.id).map(p => 
         setDoc(doc(db, 'products', p.id), sanitizeForFirestore(p))
       ));
-    } catch (e) {
-      console.warn('Firebase Products Sync Error:', e);
-      handleFirestoreError(e, OperationType.WRITE, 'products');
-    }
+
+      // Also save products array in settings/global for instant multi-device sync
+      await setDoc(doc(db, 'settings', 'global'), { products: newProducts }, { merge: true });
+    });
   };
 
   const handleUpdateSettings = async (newSettings: StoreSettings) => {
@@ -1420,30 +1432,11 @@ export default function App() {
       ch.close();
     } catch (e) {}
 
-    // Save to Firebase (Permanent Storage)
-    try {
+    // Save to Firebase (Permanent Storage with quota shield)
+    safeFirestoreWrite('Sync Settings', async () => {
       const cloudPayload = splitSettingsForFirestore(newSettings);
       await setDoc(doc(db, 'settings', 'global'), cloudPayload);
-    } catch (e) {
-      console.error('Firebase Settings Error:', e);
-      // Fallback: If still rejected, save essential non-binary scalar configuration
-      try {
-        const fallbackSettings = {
-          storeName: newSettings.storeName,
-          phone: newSettings.phone,
-          email: newSettings.email,
-          address: newSettings.address,
-          deliveryFeeDhaka: newSettings.deliveryFeeDhaka,
-          deliveryFeeOutside: newSettings.deliveryFeeOutside,
-          lowStockThreshold: newSettings.lowStockThreshold,
-          autoDeductStockOnOrder: newSettings.autoDeductStockOnOrder,
-          updatedAt: Date.now(),
-        };
-        await setDoc(doc(db, 'settings', 'global'), fallbackSettings, { merge: true });
-      } catch (innerErr) {
-        console.warn('Fallback Firebase settings write failed:', innerErr);
-      }
-    }
+    });
 
     try {
       await fetch('/api/settings/update', {

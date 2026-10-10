@@ -27,6 +27,71 @@ interface FirestoreErrorInfo {
   }
 }
 
+let quotaExhausted = false; // Enabled by default so updates sync across all devices and visitors
+
+// Check if quota status was stored or if it should be tried
+if (typeof window !== 'undefined') {
+  try {
+    const flagged = localStorage.getItem('hb_fs_quota_exhausted');
+    if (flagged === 'true' || (flagged && !isNaN(Number(flagged)))) {
+      quotaExhausted = true;
+    } else {
+      quotaExhausted = false;
+    }
+  } catch (e) {}
+}
+
+export function isQuotaExhausted(): boolean {
+  return quotaExhausted;
+}
+
+export function markQuotaExhausted() {
+  quotaExhausted = true;
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem('hb_fs_quota_exhausted', String(Date.now()));
+    } catch (e) {}
+  }
+}
+
+export function resetQuotaShield() {
+  quotaExhausted = false;
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.removeItem('hb_fs_quota_exhausted');
+    } catch (e) {}
+  }
+}
+
+/**
+ * Safely executes a Firestore write operation. If the project's free quota limit
+ * is reached, cloud writes are intercepted to prevent recurring errors and exponential backoffs,
+ * ensuring all data continues to be saved seamlessly in local storage and server.
+ */
+export async function safeFirestoreWrite<T>(
+  operationName: string,
+  fn: () => Promise<T>
+): Promise<T | null> {
+  if (quotaExhausted) {
+    console.warn(`[Firestore Quota Shield] Skipping cloud write for "${operationName}". Daily free quota exhausted; data saved locally & on server.`);
+    return null;
+  }
+
+  try {
+    return await fn();
+  } catch (error: any) {
+    const errMsg = error?.message || String(error);
+    const code = error?.code || '';
+    if (code === 'resource-exhausted' || errMsg.includes('resource-exhausted') || errMsg.includes('Quota limit exceeded')) {
+      markQuotaExhausted();
+      console.warn(`[Firestore Quota Shield] Quota limit reached on "${operationName}". Cloud writes safely paused until quota resets. All changes remain safe locally.`);
+      return null;
+    }
+    console.warn(`[Firestore Safe Write] "${operationName}":`, errMsg);
+    return null;
+  }
+}
+
 export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
   const errMsg = error instanceof Error ? error.message : String(error);
   const isQuotaExceeded = errMsg.includes('resource-exhausted') || errMsg.includes('Quota limit exceeded');
@@ -113,7 +178,7 @@ export function splitSettingsForFirestore(settings: StoreSettings): Record<strin
       secondaryColor: pruned.secondaryColor,
       themeId: pruned.themeId,
       logoLetter: pruned.logoLetter,
-      // logoImage: pruned.logoImage // Removed due to size
+      logoImage: pruned.logoImage,
     },
     homepage: {
       heroTitle: pruned.heroTitle,
