@@ -316,6 +316,9 @@ export default function App() {
   // Live Products State with localStorage (starts empty if no admin products)
   const [products, setProducts] = useState<ProductItem[]>(() => {
     if (typeof window !== 'undefined') {
+      if (localStorage.getItem('hb_products_empty') === 'true') {
+        return [];
+      }
       const saved = localStorage.getItem('hb_live_products');
       if (saved) {
         try {
@@ -950,10 +953,18 @@ export default function App() {
           }));
 
           if (Array.isArray(raw.products)) {
-            setProducts(raw.products);
-            try {
-              localStorage.setItem('hb_live_products', JSON.stringify(raw.products));
-            } catch (e) {}
+            if (raw.products.length === 0) {
+              setProducts([]);
+              try {
+                localStorage.setItem('hb_products_empty', 'true');
+                localStorage.removeItem('hb_live_products');
+              } catch (e) {}
+            } else if (localStorage.getItem('hb_products_empty') !== 'true') {
+              setProducts(raw.products);
+              try {
+                localStorage.setItem('hb_live_products', JSON.stringify(raw.products));
+              } catch (e) {}
+            }
           }
         }
       }
@@ -963,6 +974,10 @@ export default function App() {
 
     // 2. Listen for real-time Products & Inventory
     const unsubProducts = onSnapshot(collection(db, 'products'), (snapshot) => {
+      if (localStorage.getItem('hb_products_empty') === 'true') {
+        setProducts([]);
+        return;
+      }
       if (!snapshot.empty) {
         const firestoreProducts = snapshot.docs
           .map((doc) => doc.data() as ProductItem)
@@ -1387,7 +1402,13 @@ export default function App() {
   const handleUpdateProducts = async (newProducts: ProductItem[]) => {
     setProducts(newProducts);
     try {
-      localStorage.setItem('hb_live_products', JSON.stringify(newProducts));
+      if (newProducts.length === 0) {
+        localStorage.setItem('hb_products_empty', 'true');
+        localStorage.removeItem('hb_live_products');
+      } else {
+        localStorage.removeItem('hb_products_empty');
+        localStorage.setItem('hb_live_products', JSON.stringify(newProducts));
+      }
       const ch = new BroadcastChannel('halal_bazar_realtime_sync');
       ch.postMessage({ type: 'SYNC_PRODUCTS', payload: newProducts, sender: CLIENT_ID });
       ch.close();
